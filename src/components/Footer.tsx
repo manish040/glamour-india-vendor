@@ -19,7 +19,7 @@ const Footer = () => {
                 <Scissors className="w-5 h-5 text-primary-foreground" />
               </div>
               <span className="font-display text-xl font-semibold">
-                SalonFlow
+                Glamour India
               </span>
             </a>
             <p className="text-primary-foreground/70 mb-6 max-w-sm">
@@ -63,7 +63,7 @@ const Footer = () => {
         {/* Bottom Bar */}
         <div className="pt-8 border-t border-primary-foreground/10 flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-primary-foreground/60 text-sm">
-            © {new Date().getFullYear()} SalonFlow. All rights reserved.
+            © {new Date().getFullYear()} Glamour India. All rights reserved.
           </p>
           <div className="flex gap-6 text-sm text-primary-foreground/60">
             <a href="#privacy" className="hover:text-primary-foreground transition-colors">
