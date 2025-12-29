@@ -129,6 +129,8 @@ const DashboardNotifications = () => {
   const handleSend = async () => {
     if (!profileId) return;
 
+    const booking = bookings.find((b) => b.id === formData.booking_id);
+
     const notificationData = {
       vendor_id: profileId,
       booking_id: formData.booking_id || null,
@@ -140,16 +142,65 @@ const DashboardNotifications = () => {
     };
 
     try {
-      const { error } = await supabase
+      // First insert the notification
+      const { data: insertedNotification, error } = await supabase
         .from("notifications")
-        .insert(notificationData);
+        .insert(notificationData)
+        .select()
+        .single();
 
       if (error) throw error;
 
-      toast({
-        title: "Notification queued",
-        description: "The notification has been queued for sending.",
-      });
+      // Then call the edge function to send the email
+      if (formData.recipient_email) {
+        toast({
+          title: "Sending notification...",
+          description: "Please wait while we send the email.",
+        });
+
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-notification`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+              Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            },
+            body: JSON.stringify({
+              notificationId: insertedNotification.id,
+              recipientEmail: formData.recipient_email,
+              recipientPhone: formData.recipient_phone,
+              customerName: booking?.customer_name || "Customer",
+              serviceName: booking?.service_name || "Service",
+              bookingDate: booking ? format(new Date(booking.booking_date), "MMMM d, yyyy") : "",
+              bookingTime: booking?.booking_time || "",
+              type: formData.type,
+              message: formData.message,
+            }),
+          }
+        );
+
+        const result = await response.json();
+
+        if (result.success) {
+          toast({
+            title: "Notification sent!",
+            description: "The email has been delivered successfully.",
+          });
+        } else {
+          toast({
+            title: "Notification queued",
+            description: result.error || "Email delivery pending.",
+            variant: "destructive",
+          });
+        }
+      } else {
+        toast({
+          title: "Notification saved",
+          description: "No email address provided - notification saved but not sent.",
+        });
+      }
 
       setIsDialogOpen(false);
       setFormData({
@@ -163,7 +214,7 @@ const DashboardNotifications = () => {
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message || "Failed to queue notification",
+        description: error.message || "Failed to send notification",
         variant: "destructive",
       });
     }
