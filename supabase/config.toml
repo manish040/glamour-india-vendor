@@ -2,3 +2,6 @@ project_id = "bscmwoafyghgmbcbxdqt"
 
 [functions.send-notification]
 verify_jwt = false
+
+[functions.booking-assistant]
+verify_jwt = false

@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Calendar, Clock, Users, TrendingUp } from "lucide-react";
+import { BookingAssistant } from "@/components/BookingAssistant";
 import { format } from "date-fns";
 
 interface Booking {
@@ -227,6 +228,8 @@ const Dashboard = () => {
           </CardContent>
         </Card>
       </div>
+      
+      <BookingAssistant vendorId={profile?.id} />
     </DashboardLayout>
   );
 };
