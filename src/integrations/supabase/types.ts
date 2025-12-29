@@ -27,6 +27,7 @@ export type Database = {
           notes: string | null
           price: number | null
           service_name: string
+          staff_id: string | null
           status: string
           updated_at: string
           vendor_id: string
@@ -43,6 +44,7 @@ export type Database = {
           notes?: string | null
           price?: number | null
           service_name: string
+          staff_id?: string | null
           status?: string
           updated_at?: string
           vendor_id: string
@@ -59,13 +61,78 @@ export type Database = {
           notes?: string | null
           price?: number | null
           service_name?: string
+          staff_id?: string | null
           status?: string
           updated_at?: string
           vendor_id?: string
         }
         Relationships: [
           {
+            foreignKeyName: "bookings_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "bookings_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          booking_id: string | null
+          created_at: string
+          id: string
+          message: string
+          recipient_email: string | null
+          recipient_phone: string | null
+          scheduled_for: string | null
+          sent_at: string | null
+          status: string
+          type: string
+          vendor_id: string
+        }
+        Insert: {
+          booking_id?: string | null
+          created_at?: string
+          id?: string
+          message: string
+          recipient_email?: string | null
+          recipient_phone?: string | null
+          scheduled_for?: string | null
+          sent_at?: string | null
+          status?: string
+          type: string
+          vendor_id: string
+        }
+        Update: {
+          booking_id?: string | null
+          created_at?: string
+          id?: string
+          message?: string
+          recipient_email?: string | null
+          recipient_phone?: string | null
+          scheduled_for?: string | null
+          sent_at?: string | null
+          status?: string
+          type?: string
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_booking_id_fkey"
+            columns: ["booking_id"]
+            isOneToOne: false
+            referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_vendor_id_fkey"
             columns: ["vendor_id"]
             isOneToOne: false
             referencedRelation: "profiles"
@@ -102,6 +169,103 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      services: {
+        Row: {
+          category: string | null
+          created_at: string
+          description: string | null
+          duration_minutes: number
+          id: string
+          is_active: boolean
+          name: string
+          price: number
+          updated_at: string
+          vendor_id: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          duration_minutes?: number
+          id?: string
+          is_active?: boolean
+          name: string
+          price: number
+          updated_at?: string
+          vendor_id: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          duration_minutes?: number
+          id?: string
+          is_active?: boolean
+          name?: string
+          price?: number
+          updated_at?: string
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "services_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: string
+          is_active: boolean
+          name: string
+          phone: string | null
+          role: string
+          specializations: string[] | null
+          updated_at: string
+          vendor_id: string
+          working_hours: Json | null
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          phone?: string | null
+          role?: string
+          specializations?: string[] | null
+          updated_at?: string
+          vendor_id: string
+          working_hours?: Json | null
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          phone?: string | null
+          role?: string
+          specializations?: string[] | null
+          updated_at?: string
+          vendor_id?: string
+          working_hours?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
