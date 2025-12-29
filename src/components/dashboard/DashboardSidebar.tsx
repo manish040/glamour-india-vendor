@@ -28,11 +28,6 @@ const menuItems = [
   { title: "Profile", url: "/dashboard/profile", icon: User },
   { title: "Settings", url: "/dashboard/settings", icon: Settings },
 ];
-  { title: "Overview", url: "/dashboard", icon: LayoutDashboard },
-  { title: "Bookings", url: "/dashboard/bookings", icon: Calendar },
-  { title: "Profile", url: "/dashboard/profile", icon: User },
-  { title: "Settings", url: "/dashboard/settings", icon: Settings },
-];
 
 export function DashboardSidebar() {
   const { state } = useSidebar();
