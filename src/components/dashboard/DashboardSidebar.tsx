@@ -1,4 +1,4 @@
-import { LayoutDashboard, Calendar, User, Settings, LogOut, Sparkles } from "lucide-react";
+import { LayoutDashboard, Calendar, User, Settings, LogOut, Sparkles, Scissors, Users, TrendingUp, BarChart3, Bell } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   Sidebar,
@@ -17,6 +17,17 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 
 const menuItems = [
+  { title: "Overview", url: "/dashboard", icon: LayoutDashboard },
+  { title: "Calendar", url: "/dashboard/calendar", icon: Calendar },
+  { title: "Bookings", url: "/dashboard/bookings", icon: Calendar },
+  { title: "Services", url: "/dashboard/services", icon: Scissors },
+  { title: "Staff", url: "/dashboard/staff", icon: Users },
+  { title: "Revenue", url: "/dashboard/revenue", icon: TrendingUp },
+  { title: "Reports", url: "/dashboard/reports", icon: BarChart3 },
+  { title: "Notifications", url: "/dashboard/notifications", icon: Bell },
+  { title: "Profile", url: "/dashboard/profile", icon: User },
+  { title: "Settings", url: "/dashboard/settings", icon: Settings },
+];
   { title: "Overview", url: "/dashboard", icon: LayoutDashboard },
   { title: "Bookings", url: "/dashboard/bookings", icon: Calendar },
   { title: "Profile", url: "/dashboard/profile", icon: User },
