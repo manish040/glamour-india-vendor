@@ -172,11 +172,13 @@ export type Database = {
       }
       services: {
         Row: {
+          available_time_slots: Json | null
           category: string | null
           created_at: string
           description: string | null
           duration_minutes: number
           id: string
+          image_url: string | null
           is_active: boolean
           name: string
           price: number
@@ -184,11 +186,13 @@ export type Database = {
           vendor_id: string
         }
         Insert: {
+          available_time_slots?: Json | null
           category?: string | null
           created_at?: string
           description?: string | null
           duration_minutes?: number
           id?: string
+          image_url?: string | null
           is_active?: boolean
           name: string
           price: number
@@ -196,11 +200,13 @@ export type Database = {
           vendor_id: string
         }
         Update: {
+          available_time_slots?: Json | null
           category?: string | null
           created_at?: string
           description?: string | null
           duration_minutes?: number
           id?: string
+          image_url?: string | null
           is_active?: boolean
           name?: string
           price?: number

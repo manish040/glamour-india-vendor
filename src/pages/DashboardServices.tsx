@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { DashboardLayout } from "@/components/dashboard/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Scissors, Trash2, Edit2, IndianRupee, Clock } from "lucide-react";
+import { Plus, Armchair, Trash2, Edit2, IndianRupee, Clock, Image, Upload, X } from "lucide-react";
 
 interface Service {
   id: string;
@@ -26,7 +26,11 @@ interface Service {
   price: number;
   category: string | null;
   is_active: boolean;
+  image_url: string | null;
+  available_time_slots: Record<string, string[] | null> | null;
 }
+
+const DEFAULT_TIME_SLOTS = ["09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00"];
 
 const DashboardServices = () => {
   const { user } = useAuth();
@@ -36,14 +40,18 @@ const DashboardServices = () => {
   const [profileId, setProfileId] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingService, setEditingService] = useState<Service | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
     name: "",
     description: "",
-    duration_minutes: "30",
+    duration_minutes: "60",
     price: "",
     category: "",
     is_active: true,
+    image_url: "",
   });
 
   useEffect(() => {
@@ -70,7 +78,7 @@ const DashboardServices = () => {
           .order("category", { ascending: true })
           .order("name", { ascending: true });
 
-        setServices(servicesData || []);
+        setServices((servicesData as Service[]) || []);
       }
     } catch (error) {
       console.error("Error fetching services:", error);
@@ -83,12 +91,14 @@ const DashboardServices = () => {
     setFormData({
       name: "",
       description: "",
-      duration_minutes: "30",
+      duration_minutes: "60",
       price: "",
       category: "",
       is_active: true,
+      image_url: "",
     });
     setEditingService(null);
+    setImagePreview(null);
   };
 
   const handleOpenDialog = (service?: Service) => {
@@ -101,11 +111,78 @@ const DashboardServices = () => {
         price: String(service.price),
         category: service.category || "",
         is_active: service.is_active,
+        image_url: service.image_url || "",
       });
+      setImagePreview(service.image_url);
     } else {
       resetForm();
     }
     setIsDialogOpen(true);
+  };
+
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !profileId) return;
+
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      toast({
+        title: "Invalid file type",
+        description: "Please upload an image file",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "File too large",
+        description: "Image must be less than 5MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const fileExt = file.name.split(".").pop();
+      const fileName = `${profileId}/${Date.now()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("service-images")
+        .upload(fileName, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from("service-images")
+        .getPublicUrl(fileName);
+
+      setFormData({ ...formData, image_url: publicUrl });
+      setImagePreview(publicUrl);
+
+      toast({
+        title: "Image uploaded",
+        description: "Your chair/space image has been uploaded",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Upload failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const removeImage = () => {
+    setFormData({ ...formData, image_url: "" });
+    setImagePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   };
 
   const handleSubmit = async () => {
@@ -119,6 +196,7 @@ const DashboardServices = () => {
       price: parseFloat(formData.price),
       category: formData.category || null,
       is_active: formData.is_active,
+      image_url: formData.image_url || null,
     };
 
     try {
@@ -131,8 +209,8 @@ const DashboardServices = () => {
         if (error) throw error;
 
         toast({
-          title: "Service updated",
-          description: "The service has been updated successfully.",
+          title: "Chair/Space updated",
+          description: "The listing has been updated successfully.",
         });
       } else {
         const { error } = await supabase.from("services").insert(serviceData);
@@ -140,8 +218,8 @@ const DashboardServices = () => {
         if (error) throw error;
 
         toast({
-          title: "Service created",
-          description: "The new service has been added successfully.",
+          title: "Chair/Space added",
+          description: "The new listing has been added successfully.",
         });
       }
 
@@ -151,7 +229,7 @@ const DashboardServices = () => {
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message || "Failed to save service",
+        description: error.message || "Failed to save listing",
         variant: "destructive",
       });
     }
@@ -164,14 +242,14 @@ const DashboardServices = () => {
       if (error) throw error;
 
       toast({
-        title: "Service deleted",
-        description: "The service has been removed successfully.",
+        title: "Listing deleted",
+        description: "The chair/space has been removed successfully.",
       });
       fetchServices();
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message || "Failed to delete service",
+        description: error.message || "Failed to delete listing",
         variant: "destructive",
       });
     }
@@ -187,7 +265,7 @@ const DashboardServices = () => {
       if (error) throw error;
 
       toast({
-        title: service.is_active ? "Service deactivated" : "Service activated",
+        title: service.is_active ? "Listing hidden" : "Listing visible",
       });
       fetchServices();
     } catch (error: any) {
@@ -202,36 +280,92 @@ const DashboardServices = () => {
   const categories = [...new Set(services.map((s) => s.category).filter(Boolean))];
 
   return (
-    <DashboardLayout title="Services">
+    <DashboardLayout title="Chairs / Spaces">
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <p className="text-muted-foreground">
-            Manage your salon services and pricing
+            Manage your salon chairs and spaces for rent
           </p>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button onClick={() => handleOpenDialog()}>
                 <Plus className="h-4 w-4 mr-2" />
-                Add Service
+                Add Chair/Space
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-md">
+            <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>
-                  {editingService ? "Edit Service" : "Add New Service"}
+                  {editingService ? "Edit Listing" : "Add New Chair/Space"}
                 </DialogTitle>
               </DialogHeader>
               <div className="space-y-4 mt-4">
+                {/* Image Upload */}
                 <div className="space-y-2">
-                  <Label htmlFor="name">Service Name *</Label>
+                  <Label>Photo</Label>
+                  <div className="border-2 border-dashed border-border/50 rounded-xl p-4 text-center">
+                    {imagePreview ? (
+                      <div className="relative inline-block">
+                        <img
+                          src={imagePreview}
+                          alt="Chair/Space preview"
+                          className="w-full max-w-[200px] h-32 object-cover rounded-lg mx-auto"
+                        />
+                        <Button
+                          variant="destructive"
+                          size="icon"
+                          className="absolute -top-2 -right-2 h-6 w-6"
+                          onClick={removeImage}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div
+                        className="cursor-pointer py-4"
+                        onClick={() => fileInputRef.current?.click()}
+                      >
+                        <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                        <p className="text-sm text-muted-foreground">
+                          Click to upload photo
+                        </p>
+                        <p className="text-xs text-muted-foreground/70 mt-1">
+                          JPG, PNG up to 5MB
+                        </p>
+                      </div>
+                    )}
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleImageUpload}
+                      disabled={uploading}
+                    />
+                    {!imagePreview && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="mt-2"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={uploading}
+                      >
+                        {uploading ? "Uploading..." : "Choose Image"}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="name">Chair/Space Name *</Label>
                   <Input
                     id="name"
                     value={formData.name}
                     onChange={(e) =>
                       setFormData({ ...formData, name: e.target.value })
                     }
-                    placeholder="e.g., Haircut, Facial, Massage"
+                    placeholder="e.g., Station 1, VIP Chair, Corner Booth"
                   />
                 </div>
                 <div className="space-y-2">
@@ -242,7 +376,7 @@ const DashboardServices = () => {
                     onChange={(e) =>
                       setFormData({ ...formData, description: e.target.value })
                     }
-                    placeholder="Describe the service..."
+                    placeholder="Describe the chair/space, amenities included..."
                     rows={3}
                   />
                 </div>
@@ -254,12 +388,12 @@ const DashboardServices = () => {
                     onChange={(e) =>
                       setFormData({ ...formData, category: e.target.value })
                     }
-                    placeholder="e.g., Hair, Skin, Nails"
+                    placeholder="e.g., Hair Station, Nail Station, VIP"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="duration">Duration (min) *</Label>
+                    <Label htmlFor="duration">Min. Booking (hrs) *</Label>
                     <Input
                       id="duration"
                       type="number"
@@ -270,10 +404,12 @@ const DashboardServices = () => {
                           duration_minutes: e.target.value,
                         })
                       }
+                      step="30"
+                      min="30"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="price">Price (₹) *</Label>
+                    <Label htmlFor="price">Price/Hour (₹) *</Label>
                     <Input
                       id="price"
                       type="number"
@@ -286,7 +422,7 @@ const DashboardServices = () => {
                   </div>
                 </div>
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="is_active">Active</Label>
+                  <Label htmlFor="is_active">Available for Booking</Label>
                   <Switch
                     id="is_active"
                     checked={formData.is_active}
@@ -298,84 +434,49 @@ const DashboardServices = () => {
                 <Button
                   onClick={handleSubmit}
                   className="w-full"
-                  disabled={!formData.name || !formData.price}
+                  disabled={!formData.name || !formData.price || uploading}
                 >
-                  {editingService ? "Update Service" : "Add Service"}
+                  {editingService ? "Update Listing" : "Add Listing"}
                 </Button>
               </div>
             </DialogContent>
           </Dialog>
         </div>
 
-        {/* Services List */}
+        {/* Services/Chairs List */}
         <Card className="glass border-border/50">
           <CardHeader>
             <CardTitle className="font-display flex items-center gap-2">
-              <Scissors className="h-5 w-5 text-primary" />
-              All Services ({services.length})
+              <Armchair className="h-5 w-5 text-primary" />
+              All Chairs/Spaces ({services.length})
             </CardTitle>
           </CardHeader>
           <CardContent>
             {loading ? (
               <p className="text-muted-foreground text-center py-8">
-                Loading services...
+                Loading listings...
               </p>
             ) : services.length === 0 ? (
               <div className="text-center py-12">
-                <Scissors className="h-16 w-16 text-muted-foreground/30 mx-auto mb-4" />
+                <Armchair className="h-16 w-16 text-muted-foreground/30 mx-auto mb-4" />
                 <p className="text-muted-foreground text-lg">
-                  No services yet
+                  No chairs/spaces yet
                 </p>
                 <p className="text-muted-foreground/70 text-sm mt-1">
-                  Add your first service to get started
+                  Add your first chair or space to get started
                 </p>
               </div>
             ) : (
-              <div className="space-y-6">
-                {categories.length > 0 ? (
-                  categories.map((category) => (
-                    <div key={category}>
-                      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-                        {category}
-                      </h3>
-                      <div className="space-y-3">
-                        {services
-                          .filter((s) => s.category === category)
-                          .map((service) => (
-                            <ServiceCard
-                              key={service.id}
-                              service={service}
-                              onEdit={() => handleOpenDialog(service)}
-                              onDelete={() => handleDelete(service.id)}
-                              onToggle={() => toggleActive(service)}
-                            />
-                          ))}
-                      </div>
-                    </div>
-                  ))
-                ) : null}
-                {services.filter((s) => !s.category).length > 0 && (
-                  <div>
-                    {categories.length > 0 && (
-                      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-                        Uncategorized
-                      </h3>
-                    )}
-                    <div className="space-y-3">
-                      {services
-                        .filter((s) => !s.category)
-                        .map((service) => (
-                          <ServiceCard
-                            key={service.id}
-                            service={service}
-                            onEdit={() => handleOpenDialog(service)}
-                            onDelete={() => handleDelete(service.id)}
-                            onToggle={() => toggleActive(service)}
-                          />
-                        ))}
-                    </div>
-                  </div>
-                )}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {services.map((service) => (
+                  <ServiceCard
+                    key={service.id}
+                    service={service}
+                    onEdit={() => handleOpenDialog(service)}
+                    onDelete={() => handleDelete(service.id)}
+                    onToggle={() => toggleActive(service)}
+                  />
+                ))}
               </div>
             )}
           </CardContent>
@@ -397,50 +498,78 @@ const ServiceCard = ({
   onToggle: () => void;
 }) => (
   <div
-    className={`flex items-center justify-between p-4 rounded-xl border transition-all ${
+    className={`rounded-xl border overflow-hidden transition-all ${
       service.is_active
         ? "bg-secondary/50 border-border/30"
         : "bg-muted/30 border-border/20 opacity-60"
     }`}
   >
-    <div className="flex-1 space-y-1">
-      <div className="flex items-center gap-2">
-        <p className="font-medium text-foreground">{service.name}</p>
-        {!service.is_active && (
-          <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
-            Inactive
+    {/* Image */}
+    <div className="aspect-video bg-muted/50 relative">
+      {service.image_url ? (
+        <img
+          src={service.image_url}
+          alt={service.name}
+          className="w-full h-full object-cover"
+        />
+      ) : (
+        <div className="w-full h-full flex items-center justify-center">
+          <Image className="h-12 w-12 text-muted-foreground/30" />
+        </div>
+      )}
+      {!service.is_active && (
+        <div className="absolute inset-0 bg-background/50 flex items-center justify-center">
+          <span className="px-3 py-1 rounded-full bg-muted text-muted-foreground text-sm font-medium">
+            Unavailable
+          </span>
+        </div>
+      )}
+    </div>
+    
+    {/* Content */}
+    <div className="p-4 space-y-3">
+      <div>
+        <h3 className="font-semibold text-foreground">{service.name}</h3>
+        {service.category && (
+          <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+            {service.category}
           </span>
         )}
+        {service.description && (
+          <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+            {service.description}
+          </p>
+        )}
       </div>
-      {service.description && (
-        <p className="text-sm text-muted-foreground line-clamp-1">
-          {service.description}
-        </p>
-      )}
+      
       <div className="flex items-center gap-4 text-sm">
-        <span className="flex items-center gap-1 text-primary font-medium">
-          <IndianRupee className="h-3 w-3" />
-          {service.price.toLocaleString("en-IN")}
+        <span className="flex items-center gap-1 text-primary font-bold text-lg">
+          <IndianRupee className="h-4 w-4" />
+          {service.price.toLocaleString("en-IN")}/hr
         </span>
         <span className="flex items-center gap-1 text-muted-foreground">
           <Clock className="h-3 w-3" />
-          {service.duration_minutes} min
+          Min {service.duration_minutes} min
         </span>
       </div>
-    </div>
-    <div className="flex items-center gap-2">
-      <Switch checked={service.is_active} onCheckedChange={onToggle} />
-      <Button variant="ghost" size="icon" onClick={onEdit}>
-        <Edit2 className="h-4 w-4" />
-      </Button>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="text-destructive hover:text-destructive"
-        onClick={onDelete}
-      >
-        <Trash2 className="h-4 w-4" />
-      </Button>
+      
+      {/* Actions */}
+      <div className="flex items-center justify-between pt-2 border-t border-border/30">
+        <Switch checked={service.is_active} onCheckedChange={onToggle} />
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" onClick={onEdit}>
+            <Edit2 className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-destructive hover:text-destructive"
+            onClick={onDelete}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
     </div>
   </div>
 );
