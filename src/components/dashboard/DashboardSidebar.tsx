@@ -1,4 +1,4 @@
-import { LayoutDashboard, Calendar, User, Settings, LogOut, Sparkles, Scissors, Users, TrendingUp, BarChart3, Bell } from "lucide-react";
+import { LayoutDashboard, Calendar, User, Settings, LogOut, Sparkles, Armchair, Users, TrendingUp, BarChart3, Bell } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   Sidebar,
@@ -20,7 +20,7 @@ const menuItems = [
   { title: "Overview", url: "/dashboard", icon: LayoutDashboard },
   { title: "Calendar", url: "/dashboard/calendar", icon: Calendar },
   { title: "Bookings", url: "/dashboard/bookings", icon: Calendar },
-  { title: "Services", url: "/dashboard/services", icon: Scissors },
+  { title: "Chairs/Spaces", url: "/dashboard/services", icon: Armchair },
   { title: "Staff", url: "/dashboard/staff", icon: Users },
   { title: "Revenue", url: "/dashboard/revenue", icon: TrendingUp },
   { title: "Reports", url: "/dashboard/reports", icon: BarChart3 },
