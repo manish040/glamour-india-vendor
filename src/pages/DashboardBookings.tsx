@@ -21,8 +21,14 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Calendar, Trash2, Edit2 } from "lucide-react";
+import { Plus, Calendar, Trash2, Edit2, User } from "lucide-react";
 import { format } from "date-fns";
+
+interface Staff {
+  id: string;
+  name: string;
+  is_active: boolean;
+}
 
 interface Booking {
   id: string;
@@ -36,12 +42,15 @@ interface Booking {
   price: number | null;
   status: string;
   notes: string | null;
+  staff_id: string | null;
+  staff?: Staff | null;
 }
 
 const DashboardBookings = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [staff, setStaff] = useState<Staff[]>([]);
   const [loading, setLoading] = useState(true);
   const [profileId, setProfileId] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -58,6 +67,7 @@ const DashboardBookings = () => {
     price: "",
     status: "pending",
     notes: "",
+    staff_id: "",
   });
 
   useEffect(() => {
@@ -77,14 +87,25 @@ const DashboardBookings = () => {
       if (profileData) {
         setProfileId(profileData.id);
 
+        // Fetch staff
+        const { data: staffData } = await supabase
+          .from("staff")
+          .select("id, name, is_active")
+          .eq("vendor_id", profileData.id)
+          .eq("is_active", true)
+          .order("name");
+
+        setStaff((staffData as Staff[]) || []);
+
+        // Fetch bookings with staff info
         const { data: bookingsData } = await supabase
           .from("bookings")
-          .select("*")
+          .select("*, staff:staff_id(id, name, is_active)")
           .eq("vendor_id", profileData.id)
           .order("booking_date", { ascending: false })
           .order("booking_time", { ascending: false });
 
-        setBookings(bookingsData || []);
+        setBookings((bookingsData as Booking[]) || []);
       }
     } catch (error) {
       console.error("Error fetching bookings:", error);
@@ -105,6 +126,7 @@ const DashboardBookings = () => {
       price: "",
       status: "pending",
       notes: "",
+      staff_id: "",
     });
     setEditingBooking(null);
   };
@@ -123,6 +145,7 @@ const DashboardBookings = () => {
         price: booking.price ? String(booking.price) : "",
         status: booking.status,
         notes: booking.notes || "",
+        staff_id: booking.staff_id || "",
       });
     } else {
       resetForm();
@@ -145,6 +168,7 @@ const DashboardBookings = () => {
       price: formData.price ? parseFloat(formData.price) : null,
       status: formData.status,
       notes: formData.notes || null,
+      staff_id: formData.staff_id || null,
     };
 
     try {
@@ -386,6 +410,27 @@ const DashboardBookings = () => {
                   </Select>
                 </div>
                 <div className="space-y-2">
+                  <Label htmlFor="staff_id">Assign Staff</Label>
+                  <Select
+                    value={formData.staff_id}
+                    onValueChange={(value) =>
+                      setFormData({ ...formData, staff_id: value === "none" ? "" : value })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select staff member" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No staff assigned</SelectItem>
+                      {staff.map((member) => (
+                        <SelectItem key={member.id} value={member.id}>
+                          {member.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="notes">Notes</Label>
                   <Input
                     id="notes"
@@ -461,11 +506,19 @@ const DashboardBookings = () => {
                         {format(new Date(booking.booking_date), "MMM d, yyyy")}{" "}
                         at {booking.booking_time}
                       </p>
-                      {booking.price && (
-                        <p className="text-sm font-medium text-primary">
-                          ₹{booking.price.toLocaleString("en-IN")}
-                        </p>
-                      )}
+                      <div className="flex items-center gap-3">
+                        {booking.staff && (
+                          <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+                            <User className="h-3 w-3" />
+                            {booking.staff.name}
+                          </span>
+                        )}
+                        {booking.price && (
+                          <p className="text-sm font-medium text-primary">
+                            ₹{booking.price.toLocaleString("en-IN")}
+                          </p>
+                        )}
+                      </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <Select
