@@ -26,6 +26,7 @@ export type Database = {
           id: string
           notes: string | null
           price: number | null
+          service_id: string | null
           service_name: string
           staff_id: string | null
           status: string
@@ -43,6 +44,7 @@ export type Database = {
           id?: string
           notes?: string | null
           price?: number | null
+          service_id?: string | null
           service_name: string
           staff_id?: string | null
           status?: string
@@ -60,6 +62,7 @@ export type Database = {
           id?: string
           notes?: string | null
           price?: number | null
+          service_id?: string | null
           service_name?: string
           staff_id?: string | null
           status?: string
@@ -67,6 +70,13 @@ export type Database = {
           vendor_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "bookings_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "bookings_staff_id_fkey"
             columns: ["staff_id"]

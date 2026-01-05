@@ -21,12 +21,20 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Calendar, Trash2, Edit2, User } from "lucide-react";
+import { Plus, Calendar, Trash2, Edit2, User, Armchair } from "lucide-react";
 import { format } from "date-fns";
 
 interface Staff {
   id: string;
   name: string;
+  is_active: boolean;
+}
+
+interface Service {
+  id: string;
+  name: string;
+  price: number;
+  duration_minutes: number;
   is_active: boolean;
 }
 
@@ -36,6 +44,7 @@ interface Booking {
   customer_phone: string | null;
   customer_email: string | null;
   service_name: string;
+  service_id: string | null;
   booking_date: string;
   booking_time: string;
   duration_minutes: number | null;
@@ -44,6 +53,7 @@ interface Booking {
   notes: string | null;
   staff_id: string | null;
   staff?: Staff | null;
+  service?: Service | null;
 }
 
 const DashboardBookings = () => {
@@ -51,6 +61,7 @@ const DashboardBookings = () => {
   const { toast } = useToast();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [staff, setStaff] = useState<Staff[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [profileId, setProfileId] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -61,6 +72,7 @@ const DashboardBookings = () => {
     customer_phone: "",
     customer_email: "",
     service_name: "",
+    service_id: "",
     booking_date: "",
     booking_time: "",
     duration_minutes: "60",
@@ -97,10 +109,20 @@ const DashboardBookings = () => {
 
         setStaff((staffData as Staff[]) || []);
 
-        // Fetch bookings with staff info
+        // Fetch services (chairs/spaces)
+        const { data: servicesData } = await supabase
+          .from("services")
+          .select("id, name, price, duration_minutes, is_active")
+          .eq("vendor_id", profileData.id)
+          .eq("is_active", true)
+          .order("name");
+
+        setServices((servicesData as Service[]) || []);
+
+        // Fetch bookings with staff and service info
         const { data: bookingsData } = await supabase
           .from("bookings")
-          .select("*, staff:staff_id(id, name, is_active)")
+          .select("*, staff:staff_id(id, name, is_active), service:service_id(id, name, price, duration_minutes, is_active)")
           .eq("vendor_id", profileData.id)
           .order("booking_date", { ascending: false })
           .order("booking_time", { ascending: false });
@@ -120,6 +142,7 @@ const DashboardBookings = () => {
       customer_phone: "",
       customer_email: "",
       service_name: "",
+      service_id: "",
       booking_date: "",
       booking_time: "",
       duration_minutes: "60",
@@ -139,6 +162,7 @@ const DashboardBookings = () => {
         customer_phone: booking.customer_phone || "",
         customer_email: booking.customer_email || "",
         service_name: booking.service_name,
+        service_id: booking.service_id || "",
         booking_date: booking.booking_date,
         booking_time: booking.booking_time,
         duration_minutes: String(booking.duration_minutes || 60),
@@ -153,6 +177,23 @@ const DashboardBookings = () => {
     setIsDialogOpen(true);
   };
 
+  const handleServiceChange = (serviceId: string) => {
+    if (serviceId === "none") {
+      setFormData({ ...formData, service_id: "", service_name: "" });
+      return;
+    }
+    const selectedService = services.find((s) => s.id === serviceId);
+    if (selectedService) {
+      setFormData({
+        ...formData,
+        service_id: serviceId,
+        service_name: selectedService.name,
+        price: String(selectedService.price),
+        duration_minutes: String(selectedService.duration_minutes),
+      });
+    }
+  };
+
   const handleSubmit = async () => {
     if (!profileId) return;
 
@@ -162,6 +203,7 @@ const DashboardBookings = () => {
       customer_phone: formData.customer_phone || null,
       customer_email: formData.customer_email || null,
       service_name: formData.service_name,
+      service_id: formData.service_id || null,
       booking_date: formData.booking_date,
       booking_time: formData.booking_time,
       duration_minutes: parseInt(formData.duration_minutes),
@@ -326,6 +368,25 @@ const DashboardBookings = () => {
                       placeholder="Email address"
                     />
                   </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="service_id">Chair / Space</Label>
+                  <Select
+                    value={formData.service_id || "none"}
+                    onValueChange={handleServiceChange}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select chair/space" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No chair selected</SelectItem>
+                      {services.map((service) => (
+                        <SelectItem key={service.id} value={service.id}>
+                          {service.name} - ₹{service.price}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="service_name">Service *</Label>
@@ -506,7 +567,13 @@ const DashboardBookings = () => {
                         {format(new Date(booking.booking_date), "MMM d, yyyy")}{" "}
                         at {booking.booking_time}
                       </p>
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 flex-wrap">
+                        {booking.service && (
+                          <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground border border-border/50">
+                            <Armchair className="h-3 w-3" />
+                            {booking.service.name}
+                          </span>
+                        )}
                         {booking.staff && (
                           <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary">
                             <User className="h-3 w-3" />
